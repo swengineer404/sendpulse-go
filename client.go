@@ -26,8 +26,13 @@ func NewAPIError(statusCode int, url, body string, err error) *APIError {
 	}
 }
 
-func (e *APIError) Error() string {
-	return fmt.Sprintf("api error [%s](%d): %s (%s)", e.URL, e.StatusCode, e.Body, e.Err)
+func (e *APIError) Error() (s string) {
+	s = fmt.Sprintf("api error [%s](%d): %s", e.URL, e.StatusCode, e.Body)
+	if e.Err != nil {
+		s += fmt.Sprintf(" (%s)", e.Err)
+	}
+
+	return s
 }
 
 type Client struct {
@@ -54,6 +59,7 @@ func New(config *ClientConfig) *Client {
 	}
 
 	c.Auth = newAuthService(c)
+	c.Email = newEmailService(c)
 
 	return c
 }
@@ -106,8 +112,10 @@ func (c *Client) Send(method, path string, body, result any, useToken bool) (*ht
 		return nil, NewAPIError(res.StatusCode, req.URL.String(), string(resBody), nil)
 	}
 
-	if err := json.Unmarshal(resBody, result); err != nil {
-		return nil, NewAPIError(res.StatusCode, req.URL.String(), string(resBody), err)
+	if result != nil {
+		if err := json.Unmarshal(resBody, result); err != nil {
+			return nil, NewAPIError(res.StatusCode, req.URL.String(), string(resBody), err)
+		}
 	}
 
 	return res, nil
