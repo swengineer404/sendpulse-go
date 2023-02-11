@@ -10,31 +10,6 @@ import (
 	"time"
 )
 
-type APIError struct {
-	StatusCode int
-	URL        string
-	Body       string
-	Err        error
-}
-
-func NewAPIError(statusCode int, url, body string, err error) *APIError {
-	return &APIError{
-		StatusCode: statusCode,
-		URL:        url,
-		Body:       body,
-		Err:        err,
-	}
-}
-
-func (e *APIError) Error() (s string) {
-	s = fmt.Sprintf("api error [%s](%d): %s", e.URL, e.StatusCode, e.Body)
-	if e.Err != nil {
-		s += fmt.Sprintf(" (%s)", e.Err)
-	}
-
-	return s
-}
-
 type Client struct {
 	Auth  *AuthService
 	Email *EmailService
@@ -109,7 +84,13 @@ func (c *Client) Send(method, path string, body, result any, useToken bool) (*ht
 	}
 
 	if res.StatusCode >= 400 {
-		return nil, NewAPIError(res.StatusCode, req.URL.String(), string(resBody), nil)
+		//var apiErr APIError
+		apiErr := NewAPIError(res.StatusCode, req.URL.String(), string(resBody), nil)
+		if err := json.Unmarshal(resBody, apiErr); err != nil {
+			return nil, apiErr
+		}
+
+		return nil, apiErr
 	}
 
 	if result != nil {
