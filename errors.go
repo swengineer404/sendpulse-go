@@ -1,19 +1,22 @@
 package sendpulse
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 const (
-	ErrNoData            = 8
-	ErrSenderNotFound    = 10
-	ErrRecipientNotFound = 11
-	ErrEmailNotFound     = 303
+	ErrorCodeNoData            = 8
+	ErrorCodeSenderNotFound    = 10
+	ErrorCodeRecipientNotFound = 11
+	ErrorCodeEmailNotFound     = 303
 )
 
 type APIError struct {
 	StatusCode int
 	URL        string
 	Body       string
-	ErrorCode  string `json:"error_code"`
+	ErrorCode  int    `json:"error_code"`
 	Message    string `json:"message"`
 	Err        error
 }
@@ -34,4 +37,13 @@ func (e *APIError) Error() (s string) {
 	}
 
 	return s
+}
+
+func ErrIsCode(err error, code int) bool {
+	var e *APIError
+	if !errors.As(err, &e) {
+		return false
+	}
+
+	return e.ErrorCode == code
 }

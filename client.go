@@ -11,12 +11,14 @@ import (
 )
 
 type Client struct {
-	Auth  *AuthService
-	Email *EmailService
+	Auth   *AuthService
+	Email  *EmailService
+	Events *EventService
 
-	baseURL string
-	client  *http.Client
-	config  *ClientConfig
+	baseURL       string
+	eventsBaseURL string
+	client        *http.Client
+	config        *ClientConfig
 }
 
 type ClientConfig struct {
@@ -26,7 +28,8 @@ type ClientConfig struct {
 
 func New(config *ClientConfig) *Client {
 	c := &Client{
-		baseURL: "https://api.sendpulse.com",
+		baseURL:       "https://api.sendpulse.com",
+		eventsBaseURL: "https://events.sendpulse.com",
 		client: &http.Client{
 			Timeout: time.Second * 30,
 		},
@@ -35,11 +38,20 @@ func New(config *ClientConfig) *Client {
 
 	c.Auth = newAuthService(c)
 	c.Email = newEmailService(c)
+	c.Events = newEventService(c)
 
 	return c
 }
 
 func (c *Client) Send(method, path string, body, result any, useToken bool) (*http.Response, error) {
+	return c.send(method, c.baseURL+path, body, result, useToken)
+}
+
+func (c *Client) InvokeEvent(method, path string, body, result any) (*http.Response, error) {
+	return c.send(method, c.eventsBaseURL+path, body, result, true)
+}
+
+func (c *Client) send(method, url string, body, result any, useToken bool) (*http.Response, error) {
 	if useToken && time.Now().After(c.Auth.Token.ExpiresAt) {
 		if _, err := c.Auth.Authorize(c.config.ClientID, c.config.ClientSecret); err != nil {
 			return nil, err
@@ -56,7 +68,7 @@ func (c *Client) Send(method, path string, body, result any, useToken bool) (*ht
 		r = bytes.NewReader(b)
 	}
 
-	req, err := http.NewRequest(method, c.baseURL+path, r)
+	req, err := http.NewRequest(method, url, r)
 	if err != nil {
 		return nil, err
 	}
